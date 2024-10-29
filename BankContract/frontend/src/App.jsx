@@ -1,43 +1,127 @@
 import { useState, useMemo } from 'react';
 import WalletBar from './WalletBar';
-import { useAccount, useContract, useSendTransaction } from "@starknet-react/core";
+import { useAccount, useContract, useSendTransaction, useReadContract } from "@starknet-react/core";
+import { shortString } from "starknet";
 import abi from "../abi/abi.json";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('account');
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
+  const [depositAmount, setDepositAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [transferAmount, setTransferAmount] = useState('');
+  const [recipientAddress, setRecipientAddress] = useState('');
 
-  const contractAddress = "0x2dd7f3723abc383644097696d21c2aee2b3282f12978a27a4586ad7f71f829d";
+  const contractAddress = "0x3bc9d8dc47cdc280d9b860b3ea2ada99fa0ac22171c795000bd5fef2fb1ff3";
   const { address: userAddress } = useAccount();
-  console.log(userAddress);
-  console.log(contractAddress)
 
   const { contract } = useContract({
     abi,
     address: contractAddress,
   });
-  
-  const ageBigInt = BigInt(age);
-  const byteArray = function(){
-    
-  }
 
-  const calls = useMemo(() => {
-    if (!contract) return [];
-    return [contract.populate("createAccount", [name, ageBigInt])];
+  // Convert string name to felt array (ByteArray in Starknet)
+  const nameToFelt = (str) => {
+    return shortString.encodeShortString(str);
+  };
 
-  }, [contract, userAddress, name, age]);
-
-  const { send: writeAsync, data: writeData } = useSendTransaction({
-    calls,
+  // Read user balance
+  const { data: userBalance } = useReadContract({
+    functionName: "get_balance",
+    args: [],
+    contract: contract,
+    watch: true,
   });
 
-  const handleSubmit = async (event) => {
+  // Create Account Transaction
+  const createAccountCalls = useMemo(() => {
+    if (!contract || !name || !age) return [];
+    return [contract.populate("createAccount", [nameToFelt(name), BigInt(age)])];
+  }, [contract, name, age]);
+
+  const { send: createAccount } = useSendTransaction({
+    calls: createAccountCalls,
+  });
+
+  // Deposit Transaction
+  const depositCalls = useMemo(() => {
+    if (!contract || !depositAmount) return [];
+    return [contract.populate("deposit", [BigInt(depositAmount)])];
+  }, [contract, depositAmount]);
+
+  const { send: deposit } = useSendTransaction({
+    calls: depositCalls,
+  });
+
+  // Withdraw Transaction
+  const withdrawCalls = useMemo(() => {
+    if (!contract || !withdrawAmount) return [];
+    return [contract.populate("withdraw", [BigInt(withdrawAmount)])];
+  }, [contract, withdrawAmount]);
+
+  const { send: withdraw } = useSendTransaction({
+    calls: withdrawCalls,
+  });
+
+  // Transfer Transaction
+  const transferCalls = useMemo(() => {
+    if (!contract || !transferAmount || !recipientAddress) return [];
+    return [contract.populate("transfer", [recipientAddress, BigInt(transferAmount)])];
+  }, [contract, transferAmount, recipientAddress]);
+
+  const { send: transfer } = useSendTransaction({
+    calls: transferCalls,
+  });
+
+  // Form submission handlers
+  const handleCreateAccount = async (event) => {
     event.preventDefault();
-    console.log("Form submitted with name", name, "and age", age);
-    if (writeAsync) {
-      writeAsync();
+    if (createAccount) {
+      try {
+        await createAccount();
+        setName('');
+        setAge('');
+      } catch (error) {
+        console.error("Error creating account:", error);
+      }
+    }
+  };
+
+  const handleDeposit = async (event) => {
+    event.preventDefault();
+    if (deposit) {
+      try {
+        await deposit();
+        setDepositAmount('');
+      } catch (error) {
+        console.error("Error depositing:", error);
+      }
+    }
+  };
+
+  const handleWithdraw = async (event) => {
+    event.preventDefault();
+    if (withdraw) {
+      try {
+        await withdraw();
+        setWithdrawAmount('');
+      } catch (error) {
+        console.error("Error withdrawing:", error);
+      }
+    }
+  };
+
+  const handleTransfer = async (event) => {
+    event.preventDefault();
+    if (transfer) {
+      try {
+        await transfer();
+        setTransferAmount('');
+        setRecipientAddress('');
+      } catch (error) {
+        console.error("Error transferring:", error);
+      }
     }
   };
 
@@ -70,7 +154,7 @@ export default function App() {
               <div>
                 <h2 className="text-2xl font-semibold mb-4 text-indigo-800">Create Account</h2>
                 <p className="text-gray-600 mb-4">Set up your new bank account here.</p>
-                <div className="space-y-4">
+                <form onSubmit={handleCreateAccount} className="space-y-4">
                   <div>
                     <label htmlFor="name" className="block text-sm font-medium mb-1 text-indigo-700">
                       Name
@@ -82,6 +166,7 @@ export default function App() {
                       placeholder="John Doe"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
+                      required
                     />
                   </div>
                   <div>
@@ -95,15 +180,18 @@ export default function App() {
                       placeholder="18"
                       value={age}
                       onChange={(e) => setAge(e.target.value)}
+                      required
+                      min="1"
+                      max="150"
                     />
                   </div>
                   <button 
-                  className="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                  onClick={handleSubmit}
+                    type="submit"
+                    className="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                   >
                     Create Account
                   </button>
-                </div>
+                </form>
               </div>
             )}
 
@@ -111,7 +199,7 @@ export default function App() {
               <div>
                 <h2 className="text-2xl font-semibold mb-4 text-indigo-800">Deposit Funds</h2>
                 <p className="text-gray-600 mb-4">Add money to your account.</p>
-                <div className="space-y-4">
+                <form onSubmit={handleDeposit} className="space-y-4">
                   <div>
                     <label htmlFor="deposit-amount" className="block text-sm font-medium mb-1 text-indigo-700">
                       Amount
@@ -121,12 +209,19 @@ export default function App() {
                       id="deposit-amount"
                       className="w-full p-2 border border-indigo-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       placeholder="0.00"
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(e.target.value)}
+                      required
+                      min="0"
                     />
                   </div>
-                  <button className="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                  <button 
+                    type="submit"
+                    className="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                  >
                     Deposit
                   </button>
-                </div>
+                </form>
               </div>
             )}
 
@@ -134,7 +229,7 @@ export default function App() {
               <div>
                 <h2 className="text-2xl font-semibold mb-4 text-indigo-800">Withdraw Funds</h2>
                 <p className="text-gray-600 mb-4">Withdraw money from your account.</p>
-                <div className="space-y-4">
+                <form onSubmit={handleWithdraw} className="space-y-4">
                   <div>
                     <label htmlFor="withdraw-amount" className="block text-sm font-medium mb-1 text-indigo-700">
                       Amount
@@ -144,12 +239,19 @@ export default function App() {
                       id="withdraw-amount"
                       className="w-full p-2 border border-indigo-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       placeholder="0.00"
+                      value={withdrawAmount}
+                      onChange={(e) => setWithdrawAmount(e.target.value)}
+                      required
+                      min="0"
                     />
                   </div>
-                  <button className="w-full bg-red-600 text-white py-2 rounded-md hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                  <button 
+                    type="submit"
+                    className="w-full bg-red-600 text-white py-2 rounded-md hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                  >
                     Withdraw
                   </button>
-                </div>
+                </form>
               </div>
             )}
 
@@ -157,7 +259,7 @@ export default function App() {
               <div>
                 <h2 className="text-2xl font-semibold mb-4 text-indigo-800">Transfer Funds</h2>
                 <p className="text-gray-600 mb-4">Send money to another account.</p>
-                <div className="space-y-4">
+                <form onSubmit={handleTransfer} className="space-y-4">
                   <div>
                     <label htmlFor="recipient" className="block text-sm font-medium mb-1 text-indigo-700">
                       Recipient Address
@@ -167,6 +269,9 @@ export default function App() {
                       id="recipient"
                       className="w-full p-2 border border-indigo-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       placeholder="0x..."
+                      value={recipientAddress}
+                      onChange={(e) => setRecipientAddress(e.target.value)}
+                      required
                     />
                   </div>
                   <div>
@@ -178,12 +283,19 @@ export default function App() {
                       id="transfer-amount"
                       className="w-full p-2 border border-indigo-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       placeholder="0.00"
+                      value={transferAmount}
+                      onChange={(e) => setTransferAmount(e.target.value)}
+                      required
+                      min="0"
                     />
                   </div>
-                  <button className="w-full bg-yellow-600 text-white py-2 rounded-md hover:bg-yellow-700 transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2">
+                  <button 
+                    type="submit"
+                    className="w-full bg-yellow-600 text-white py-2 rounded-md hover:bg-yellow-700 transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
+                  >
                     Transfer
                   </button>
-                </div>
+                </form>
               </div>
             )}
 
@@ -191,15 +303,14 @@ export default function App() {
               <div>
                 <h2 className="text-2xl font-semibold mb-4 text-indigo-800">Account Balance</h2>
                 <p className="text-gray-600 mb-4">View your current balance.</p>
-                <p className="text-4xl font-bold mb-4 text-indigo-600">0.00 ETH</p>
-                <button className="w-full bg-indigo-100 text-indigo-800 py-2 rounded-md hover:bg-indigo-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                  Refresh Balance
-                </button>
+                <p className="text-4xl font-bold mb-4 text-indigo-600">
+                  {userBalance ? userBalance.toString() : '0.00'} ETH
+                </p>
               </div>
             )}
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
