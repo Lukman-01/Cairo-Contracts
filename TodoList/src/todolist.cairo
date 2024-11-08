@@ -1,6 +1,5 @@
 #[starknet::interface]
 pub trait ITodoList<TContractState> {
-
     fn addTodo(ref self: TContractState, description: felt252, deadline: u32) -> bool;
 
     fn updateTodo(ref self: TContractState, index: u8, description: felt252, deadline: u32) -> bool;
@@ -57,12 +56,11 @@ mod Todo {
             let count = self.todoId.read();
             let mut index: u8 = 1;
 
-            while index < count
-                + 1 {
-                    let readTodo = self.todolist.read(index);
-                    todos.append(readTodo);
-                    index += 1;
-                };
+            while index < count + 1 {
+                let readTodo = self.todolist.read(index);
+                todos.append(readTodo);
+                index += 1;
+            };
 
             todos
         }

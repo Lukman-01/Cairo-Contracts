@@ -5,7 +5,7 @@ mod MyToken {
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
 
-   // ERC20 Mixin
+    // ERC20 Mixin
     #[abi(embed_v0)]
     impl ERC20MixinImpl = ERC20Component::ERC20MixinImpl<ContractState>;
     impl ERC20InternalImpl = ERC20Component::InternalImpl<ContractState>;
@@ -32,11 +32,7 @@ mod MyToken {
     }
 
     #[external(v0)]
-    fn mint(
-        ref self: ContractState,
-        recipient: ContractAddress,
-        amount: u256
-    ) {
+    fn mint(ref self: ContractState, recipient: ContractAddress, amount: u256) {
         // This function is NOT protected which means
         // ANYONE can mint tokens
         self.erc20.mint(recipient, amount);

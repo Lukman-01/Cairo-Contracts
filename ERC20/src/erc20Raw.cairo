@@ -9,7 +9,9 @@ pub trait IERC20<TContractState> {
     fn balance_of(self: @TContractState, account: ContractAddress) -> u256;
     fn allowance(self: @TContractState, owner: ContractAddress, spender: ContractAddress) -> u256;
     fn transfer(ref self: TContractState, recipient: ContractAddress, amount: u256) -> bool;
-    fn transfer_from(ref self: TContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool;
+    fn transfer_from(
+        ref self: TContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256
+    ) -> bool;
     fn approve(ref self: TContractState, spender: ContractAddress, amount: u256) -> bool;
 }
 
@@ -18,9 +20,7 @@ pub trait IERC20<TContractState> {
 pub mod ERC20 {
     use starknet::ContractAddress;
     use starknet::get_caller_address;
-    use starknet::storage::{
-        Map, StorageMapReadAccess, StorageMapWriteAccess
-    };
+    use starknet::storage::{Map, StorageMapReadAccess, StorageMapWriteAccess};
 
     #[storage]
     pub struct Storage {
@@ -48,7 +48,7 @@ pub mod ERC20 {
         pub value: u256
     }
 
-     
+
     #[derive(Drop, PartialEq, starknet::Event)]
     pub struct Approval {
         #[key]
@@ -59,7 +59,7 @@ pub mod ERC20 {
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState,name: ByteArray,symbol: ByteArray,decimal: u8) {
+    fn constructor(ref self: ContractState, name: ByteArray, symbol: ByteArray, decimal: u8) {
         self._name.write(name);
         self._symbol.write(symbol);
         self._decimal.write(decimal)
@@ -68,26 +68,27 @@ pub mod ERC20 {
     #[abi(embed_v0)]
     impl ERC20Impl of super::IERC20<ContractState> {
         fn get_name(self: @ContractState) -> ByteArray {
-        
             self._name.read()
         }
         fn get_symbol(self: @ContractState) -> ByteArray {
             self._symbol.read()
         }
-    
+
         fn get_decimals(self: @ContractState) -> u8 {
             self._decimal.read()
         }
-    
+
         fn total_supply(self: @ContractState) -> u256 {
             self._total_supply.read()
         }
-    
+
         fn balance_of(self: @ContractState, account: ContractAddress) -> u256 {
             self._balances.read(account)
         }
-    
-        fn allowance(self: @ContractState, owner: ContractAddress, spender:ContractAddress) -> u256 {
+
+        fn allowance(
+            self: @ContractState, owner: ContractAddress, spender: ContractAddress
+        ) -> u256 {
             self._allowances.read((owner, spender))
         }
 
@@ -103,11 +104,7 @@ pub mod ERC20 {
             recipient_balance = recipient_balance + amount;
             self._balances.write(recipient, recipient_balance);
 
-            self.emit(Event::Transfer (Transfer{
-                from: caller,
-                to: recipient,
-                value: amount,
-            }));
+            self.emit(Event::Transfer(Transfer { from: caller, to: recipient, value: amount, }));
 
             true
         }
@@ -135,11 +132,7 @@ pub mod ERC20 {
             recipient_balance = recipient_balance + amount;
             self._balances.write(recipient, recipient_balance);
 
-            self.emit(Event::Transfer (Transfer{
-                from: caller,
-                to: recipient,
-                value: amount,
-            }));
+            self.emit(Event::Transfer(Transfer { from: caller, to: recipient, value: amount, }));
 
             true
         }
@@ -149,11 +142,7 @@ pub mod ERC20 {
 
             self._allowances.write((caller, spender), amount);
 
-            self.emit(Event::Approval (Approval{
-                owner: caller,
-                spender,
-                value: amount,
-            }));
+            self.emit(Event::Approval(Approval { owner: caller, spender, value: amount, }));
 
             true
         }

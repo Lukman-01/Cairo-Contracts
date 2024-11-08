@@ -92,11 +92,11 @@ pub mod Bank {
         fn get_user_info(self: @TContractState, address: ContractAddress) -> User;
     }
 
-        #[constructor]
-        fn constructor(ref self: ContractState, initial_owner: ContractAddress) {
-            self.ownable.initializer(initial_owner);
-            self.usercount.write(0);  // Initialize usercount
-        }
+    #[constructor]
+    fn constructor(ref self: ContractState, initial_owner: ContractAddress) {
+        self.ownable.initializer(initial_owner);
+        self.usercount.write(0); // Initialize usercount
+    }
 
     #[abi(embed_v0)]
     impl BankImpl of IBank<ContractState> {
@@ -107,23 +107,14 @@ pub mod Bank {
             // Add age validation
             assert(age > 0 && age < 150, Errors::INVALID_AGE);
 
-            let user = User {
-                balance: 0,
-                name: name.clone(),
-                age,
-                hasRegistered: true
-            };
+            let user = User { balance: 0, name: name.clone(), age, hasRegistered: true };
 
             self.users.write(caller, user);
-            
+
             let usercount = self.usercount.read() + 1;
             self.usercount.write(usercount);
 
-            self.emit(Event::AccountCreated(AccountCreated {
-                user: caller,
-                name,
-                age
-            }));
+            self.emit(Event::AccountCreated(AccountCreated { user: caller, name, age }));
 
             usercount
         }
@@ -137,17 +128,14 @@ pub mod Bank {
             user.balance += amount;
             self.users.write(caller, user);
 
-            self.emit(Event::DepositMade(DepositMade {
-                user: caller,
-                amount
-            }));
+            self.emit(Event::DepositMade(DepositMade { user: caller, amount }));
         }
 
         fn transfer(ref self: ContractState, to: ContractAddress, amount: u256) {
             let caller = get_caller_address();
             // Prevent self-transfer
             assert(caller != to, Errors::INVALID_ADDRESS);
-            
+
             let mut from_user = self.users.read(caller);
             assert(from_user.hasRegistered, Errors::NOT_REGISTERED);
             assert(from_user.balance >= amount, Errors::INSUFFICIENT_BALANCE);
@@ -161,11 +149,7 @@ pub mod Bank {
             self.users.write(caller, from_user);
             self.users.write(to, to_user);
 
-            self.emit(Event::TransferMade(TransferMade {
-                from: caller,
-                to,
-                amount
-            }));
+            self.emit(Event::TransferMade(TransferMade { from: caller, to, amount }));
         }
 
         fn withdraw(ref self: ContractState, amount: u256) {
@@ -178,10 +162,7 @@ pub mod Bank {
             user.balance -= amount;
             self.users.write(caller, user);
 
-            self.emit(Event::WithdrawalMade(WithdrawalMade {
-                user: caller,
-                amount
-            }));
+            self.emit(Event::WithdrawalMade(WithdrawalMade { user: caller, amount }));
         }
 
         fn withdrawEther(ref self: ContractState, amount: u256) {
