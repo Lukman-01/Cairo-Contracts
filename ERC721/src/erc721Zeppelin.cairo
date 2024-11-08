@@ -30,10 +30,7 @@ mod MyNFT {
     }
 
     #[constructor]
-    fn constructor(
-        ref self: ContractState,
-        recipient: ContractAddress
-    ) {
+    fn constructor(ref self: ContractState, recipient: ContractAddress) {
         let name = "MyNFT";
         let symbol = "NFT";
         let base_uri = "https://api.example.com/v1/";
